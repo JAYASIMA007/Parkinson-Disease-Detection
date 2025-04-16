@@ -9,15 +9,15 @@ from transformers import pipeline
 import matplotlib.pyplot as plt
 import cv2
 import gc
+from uuid import uuid4
 
 app = Flask(__name__)
 
 # Define settings for audio processing
 class conf:
-    # Preprocessing settings
     sampling_rate = 44100
     duration = 3
-    hop_length = 700 * duration  # to make time steps 128
+    hop_length = 700 * duration
     fmin = 1
     fmax = sampling_rate // 2
     n_mels = 256
@@ -32,21 +32,18 @@ CATEGORIES = os.listdir(DATADIR)
 # Initialize Hugging Face GPT-2 text generation pipeline
 generator = pipeline('text-generation', model='gpt2')
 
-# Initialize the global lp variable
-lp = 0  # Image index variable
-
 # Function to rename files
 def rename_file(img_name):
-    img_name = os.path.basename(img_name)  # This will get the file name
-    img_name = os.path.splitext(img_name)[0]  # Remove the extension
-    img_name += ".jpg"  # Add the .jpg extension
+    img_name = os.path.basename(img_name)
+    img_name = os.path.splitext(img_name)[0]
+    img_name += ".jpg"
     return img_name
 
-# Audio preprocessing functions
+# Audio preprocessing
 def read_audio(conf, pathname, trim_long_data):
     y, sr = librosa.load(pathname, sr=conf.sampling_rate)
     if len(y) > 0:
-        y, _ = librosa.effects.trim(y)  # trim silence
+        y, _ = librosa.effects.trim(y)
     if len(y) > conf.samples:
         if trim_long_data:
             y = y[0:0 + conf.samples]
@@ -72,22 +69,23 @@ def read_as_melspectrogram(conf, pathname, trim_long_data, debug_display=False):
     return audio_to_melspectrogram(conf, x)
 
 def save_image_from_sound(img_path):
-    global lp  # Use the global variable lp
     filename = rename_file(img_path)
     x = read_as_melspectrogram(conf, img_path, trim_long_data=False, debug_display=True)
     
-    lp += 1
-    filename = str(lp)
+    unique_name = f"{uuid4().hex}.png"
+    full_path = os.path.join("static", unique_name)
     
     plt.imshow(x, interpolation='nearest')
-    plt.savefig("static/1.png")
+    plt.savefig(full_path)
     plt.close()
     del x
     gc.collect()
+    
+    return full_path
 
-def prepare(file):
+def prepare(file_path):
     IMG_SIZE = 50
-    img_array = cv2.imread("static/1.png", 1)
+    img_array = cv2.imread(file_path, 0)  # Grayscale
     img_array = cv2.Canny(img_array, threshold1=10, threshold2=10)
     img_array = cv2.medianBlur(img_array, 1)
     img_array = cv2.equalizeHist(img_array)
@@ -95,12 +93,11 @@ def prepare(file):
     return np.expand_dims(new_array, axis=0)
 
 def analyze_sound(file_path):
-    save_image_from_sound(file_path)
-    prediction = model.predict(prepare("static/1.png"))
+    image_path = save_image_from_sound(file_path)
+    prediction = model.predict(prepare(image_path))
     prediction = list(prediction[0])
     result = CATEGORIES[prediction.index(max(prediction))]
     
-    # Generate feedback using GPT-2
     feedback_prompt = f"Provide detailed feedback and suggestions for the sound classification result: {result}"
     generated_feedback = generator(feedback_prompt, max_length=100, num_return_sequences=1)[0]['generated_text']
     
@@ -127,4 +124,5 @@ def upload_file():
         return jsonify({'error': 'No file uploaded'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
