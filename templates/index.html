@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parkinson Disease Detection</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mt-5">Parkinson Disease Sound Detection</h1>
+        <form id="uploadForm" enctype="multipart/form-data" class="mt-5">
+            <div class="form-group">
+                <label for="audioFile">Choose an audio file to upload</label>
+                <input type="file" id="audioFile" name="audioFile" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload File</button>
+        </form>
+        
+        <div class="mt-4" id="resultSection">
+            <h4>Classification Result:</h4>
+            <p id="result"></p>
+            <h4>Feedback:</h4>
+            <p id="feedback"></p>
+            <h4>Generated Image:</h4>
+            <img id="audioImage" src="" alt="Audio Image" class="img-fluid">
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Handle file upload
+        $("#uploadForm").submit(function(event) {
+            event.preventDefault();
+            
+            var formData = new FormData(this); // Create FormData from the form
+            $.ajax({
+                url: "/upload",
+                type: "POST",
+                data: formData,
+                success: function(response) {
+                    // Display the classification result and feedback
+                    $('#result').text('Result: ' + response.result);
+                    $('#feedback').text('Feedback: ' + response.feedback);
+                    $('#audioImage').attr('src', 'static/1.png');
+                },
+                cache: false,
+                contentType: false,
+                processData: false
+            });
+        });
+    </script>
+</body>
+</html>
