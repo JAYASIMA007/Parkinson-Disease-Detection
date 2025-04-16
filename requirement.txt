@@ -7,3 +7,4 @@ sounddevice
 wavio
 transformers
 torch
+flask
