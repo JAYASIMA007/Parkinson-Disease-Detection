@@ -1,0 +1,9 @@
+numpy
+librosa
+matplotlib
+opencv-python-headless
+tensorflow
+sounddevice
+wavio
+transformers
+torch
